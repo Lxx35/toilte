@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中山大学拉屎指南</title>
+<style>
+  :root{
+    --bg:#f7f5f0; --card:#fff; --ink:#2b2b2b; --sub:#777;
+    --accent:#c96f4a; --line:#e8e3da; --tag:#f0ece4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6;
+    padding-bottom:60px;
+  }
+  header{
+    background:linear-gradient(135deg,#3d3a35,#5a5248);
+    color:#fff; padding:36px 20px 28px; text-align:center;
+  }
+  header h1{font-size:26px;letter-spacing:2px}
+  header p{color:#d8d0c4;font-size:14px;margin-top:8px}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px}
+
+  /* 地图区 */
+  .map{
+    margin-top:-14px; background:var(--card); border-radius:14px;
+    border:1px solid var(--line); padding:14px; box-shadow:0 6px 18px rgba(0,0,0,.05);
+  }
+  .map-box{
+    position:relative; height:280px; border-radius:10px;
+    background-color:#faf8f4;
+    background-image:url('sysu-map.jpg'); /* 把中大南校园地图存成这个文件名放同目录 */
+    background-size:cover;
+    background-position:center;
+    overflow:hidden;
+  }
+  /* 没有底图时的网格背景兜底 */
+  .map-box.no-img{
+    background-image:
+      repeating-linear-gradient(0deg,transparent,transparent 29px,#eee 30px),
+      repeating-linear-gradient(90deg,transparent,transparent 29px,#eee 30px),
+      none;
+  }
+  .pin{
+    position:absolute; width:24px;height:24px;border-radius:50%;
+    background:var(--accent); color:#fff; font-size:11px; font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    transform:translate(-50%,-50%); cursor:pointer;
+    box-shadow:0 0 0 4px rgba(201,111,74,.2);
+    transition:transform .15s;
+    z-index:2;
+  }
+  .pin:hover{transform:translate(-50%,-50%) scale(1.25)}
+  .map-tip{font-size:12px;color:var(--sub);margin-top:8px;text-align:center}
+
+  /* 筛选 */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 16px}
+  .filters button{
+    border:1px solid var(--line); background:var(--card); color:var(--sub);
+    padding:7px 14px;border-radius:20px;font-size:13px;cursor:pointer;
+    transition:.2s;
+  }
+  .filters button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* 卡片 */
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:16px 18px; margin-bottom:14px; box-shadow:0 4px 14px rgba(0,0,0,.04);
+  }
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .card h3{font-size:16px}
+  .score{color:var(--accent);font-weight:700;font-size:15px;white-space:nowrap}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:13px;color:var(--sub)}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .tag{background:var(--tag);color:#6b6357;font-size:12px;padding:3px 10px;border-radius:12px}
+  .source{font-size:12px;color:#a89f92;margin-top:10px}
+  .empty{text-align:center;color:var(--sub);padding:40px 0}
+
+  footer{text-align:center;font-size:12px;color:var(--sub);margin-top:30px;padding:0 20px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>中山大学拉屎指南</h1>
+  <p>康乐园如厕生存手册 · 数据来自同学投稿与小红书厕评</p>
+</header>
+
+<div class="wrap">
+
+  <!-- 地图区 -->
+  <div class="map">
+    <div class="map-box" id="mapBox"></div>
+    <p class="map-tip">点位按南校园大致方位标注，点击可定位卡片 · 底图可替换为官方校园地图</p>
+  </div>
+
+  <!-- 筛选 -->
+  <div class="filters" id="filters">
+    <button class="active" data-filter="all">全部</button>
+    <button data-filter="教学楼">教学楼</button>
+    <button data-filter="图书馆">图书馆</button>
+    <button data-filter="纸">有纸巾</button>
+    <button data-filter="信号">信号好</button>
+  </div>
+
+  <div id="list"></div>
+
+  <footer>
+    信息由同学投稿及小红书笔记整理，仅供参考 · 请文明如厕，爱护康乐园<br>
+    <span style="opacity:.7">投稿 / 纠错：可联系维护者</span>
+  </footer>
+</div>
+
+<script>
+/* ========== 中山大学南校园厕所数据（来源：小红书厕评） ========== */
+const TOILETS = [
+  {
+    id:1, name:"外国语学院（南门）", area:"教学楼", score:4.8,
+    x:30, y:72,
+    stalls:5, queue:"低", signal:"中", paper:true,
+    tags:["方形马桶","有纸","有洗手液","阿姨常打扫"],
+    note:"每层有马桶，2/5/6楼男厕有两个。方形马桶坐着舒服，卫生纸充足。教学楼厕所天花板级别。",
+    source:"小红书·中大南校厕评"
+  },
+  {
+    id:2, name:"高等人文研究院", area:"图书馆", score:4.9,
+    x:48, y:55,
+    stalls:2, queue:"低", signal:"中", paper:true,
+    tags:["酒店装修","灯光好","纸巾质量高"],
+    note:"被多名同学强烈推荐。酒店一样的装修，配套灯光，纸巾质量也很好。",
+    source:"小红书·中大南校马桶攻略"
+  },
+  {
+    id:3, name:"熊德龙学生中心（东门）", area:"教学楼", score:4.0,
+    x:72, y:50,
+    stalls:3, queue:"低", signal:"强", paper:false,
+    tags:["最里面是马桶","干净","无纸"],
+    note:"1-3楼都有，最里面的隔间是马桶，非常干净。但无卫生纸，必须自带。",
+    source:"小红书·中大南校厕评"
+  },
+  {
+    id:4, name:"图书馆（南校园）", area:"图书馆", score:4.3,
+    x:42, y:42,
+    stalls:4, queue:"中", signal:"强", paper:true,
+    tags:["有纸","有洗手液","有烘手机","无障碍马桶"],
+    note:"北边靠近管理学院有马桶间，其中一间是无障碍设施。配卫生纸、擦手纸、洗手液和烘手机。",
+    source:"小红书·中大南校厕评"
+  },
+  {
+    id:5, name:"第三教学楼（芙兰堂）", area:"教学楼", score:3.8,
+    x:55, y:78,
+    stalls:3, queue:"中", signal:"中", paper:true,
+    tags:["大马桶","空间大","有纸"],
+    note:"第1层报告厅附近厕所有大马桶，环境还过得去，空间大坐着舒服。",
+    source:"小红书·中大南校马桶攻略"
+  },
+  {
+    id:6, name:"伍舜德图书馆", area:"图书馆", score:3.5,
+    x:58, y:28,
+    stalls:2, queue:"低", signal:"中", paper:true,
+    tags:["厕纸充足","新风系统","一天只扫一次"],
+    note:"对开式设计，两蹲厕。厕纸补货及时，新风强劲。缺点是每天只打扫一次。",
+    source:"小红书·厕评中大伍舜德图书馆"
+  }
+];
+
+/* ========== 地图点位渲染 ========== */
+const mapBox = document.getElementById('mapBox');
+
+// 检测底图是否存在，不存在则用网格兜底
+const testImg = new Image();
+testImg.onerror = () => mapBox.classList.add('no-img');
+testImg.src = 'sysu-map.jpg';
+
+TOILETS.forEach(t=>{
+  const pin = document.createElement('div');
+  pin.className = 'pin';
+  pin.style.left = t.x + '%';
+  pin.style.top  = t.y + '%';
+  pin.title = t.name;
+  pin.textContent = t.id;
+  pin.onclick = () => scrollToCard(t.id);
+  mapBox.appendChild(pin);
+});
+
+function scrollToCard(id){
+  const el = document.getElementById('card-'+id);
+  if(el){
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.style.outline = '2px solid var(--accent)';
+    setTimeout(()=>el.style.outline='none', 1200);
+  }
+}
+
+/* ========== 列表渲染 ========== */
+const listEl = document.getElementById('list');
+
+function render(filter='all'){
+  let data = TOILETS;
+  if(filter === '纸')       data = TOILETS.filter(t => t.paper);
+  else if(filter === '信号') data = TOILETS.filter(t => t.signal === '强');
+  else if(filter !== 'all')  data = TOILETS.filter(t => t.area === filter);
+
+  if(!data.length){
+    listEl.innerHTML = '<div class="empty">暂无符合条件的厕所 🚽</div>';
+    return;
+  }
+
+  listEl.innerHTML = data.map(t=>`
+    <div class="card" id="card-${t.id}">
+      <div class="card-top">
+        <h3>${t.name}</h3>
+        <span class="score">⭐ ${t.score}</span>
+      </div>
+      <div class="meta">
+        <span>坑位 ${t.stalls}</span>
+        <span>排队：${t.queue}</span>
+        <span>信号：${t.signal}</span>
+        <span>纸巾：${t.paper ? '✅' : '❌'}</span>
+      </div>
+      <div class="tags">${t.tags.map(x=>`<span class="tag">${x}</span>`).join('')}</div>
+      <div class="meta" style="margin-top:10px;color:#8a8072">💬 ${t.note}</div>
+      <div class="source">📕 来源：${t.source}</div>
+    </div>
+  `).join('');
+}
+render();
+
+/* ========== 筛选交互 ========== */
+document.getElementById('filters').addEventListener('click', e=>{
+  if(e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  render(e.target.dataset.filter);
+});
+</script>
+</body>
+</html>
